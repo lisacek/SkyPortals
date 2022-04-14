@@ -1,0 +1,8 @@
+name: SkyPortals
+version: '${project.version}'
+main: net.candorservices.lisacek.skyportals.SkyPortals
+api-version: 1.17
+authors: [ LISACEK ]
+commands:
+  playerf:
+    permission: skyportals.playerf

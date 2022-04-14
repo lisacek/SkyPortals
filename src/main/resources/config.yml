@@ -1,0 +1,18 @@
+portals:
+  lol:
+    item:
+      name: "&aReally cool item"
+      lore:
+        - "&aThis is a lore line"
+      recipe:
+        pattern:
+          - "E,E,E"
+          - "B,E,B"
+          - "E,E,E"
+        items:
+          E:
+            material: EMERALD
+            count: 1
+          B:
+            material: DIAMOND_BLOCK
+            count: 1
