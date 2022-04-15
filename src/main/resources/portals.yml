@@ -1,0 +1,70 @@
+portals:
+  title: "Portal Menu"
+  test:
+    adjust: -3
+    destination:
+      world: world
+      x: 7
+      y: 97
+      z: 5
+      yaw: 0
+      pitch: 0
+    hologram:
+      line1: "&bClick to hide this hologram"
+      line2: "&bClick to hide this hologram"
+      adjust:
+        forward: 2
+        side: 2
+    gui:
+      delete:
+        row: 1
+        column: 2
+        material: "BARRIER"
+        name: "&4&lDelete Portal"
+        lore:
+          - "&7Permanently deletes this portal (cannot be undone)"
+      clear:
+        row: 1
+        column: 6
+        material: "RED_STAINED_GLASS_PANE"
+        name: "&cDelete Hologram"
+        lore:
+          - "&7Deletes portal hologram (cannot be undone)"
+      info:
+        row: 0
+        column: 4
+        material: "GRASS_BLOCK"
+        name: "&b&lInformation"
+        lore:
+          - "&7Birch wood portal"
+    item:
+      name: "&aReally cool item"
+      material: PLAYER_HEAD
+      amount: 1
+      lore:
+        - "&aThis is a lore line"
+      enchantments:
+        0:
+          name: DAMAGE_ALL
+          level: 1
+      nbt-settings:
+        enabled: true
+        key: "portal"
+        value: "customPortal"
+        base64:
+          enabled: true
+          value: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYWUyMjE4NDA2MThkY2YyOTZjOWIwMDM4ZDkzZWU3NDNjYTJhMGE5NjhhZjA4ZTMwYmE0YTVjYTIwZTA3Y2Q1ZSJ9fX0="
+
+      recipe:
+        pattern:
+          - "E,E,E"
+          - "x,x,x"
+          - "x,x,x"
+        items:
+          E:
+            material: EMERALD
+            amount: 1
+            nbt:
+              enabled: false
+              key: "portal"
+              value: "customPortal"

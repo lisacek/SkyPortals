@@ -1,0 +1,30 @@
+items:
+  orange:
+    item:
+      name: "&aReally cool item"
+      material: PLAYER_HEAD
+      amount: 1
+      lore:
+        - "&aThis is a lore line"
+      enchantments:
+      nbt-settings:
+        enabled: true
+        key: "specialItem"
+        value: "orange"
+        base64:
+          enabled: true
+          value: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODQ3ZTljYjY1MDhmMDc5YWRiYmNiNDk2OWM1MGQxMjZlMTljYzk0YjllOGViMTNiOTRlNmUyMGJmYmEyMWVkMSJ9fX0="
+
+      recipe:
+        pattern:
+          - "A,A,A"
+          - "A,A,A"
+          - "A,A,A"
+        items:
+          A:
+            material: APPLE
+            amount: 1
+            nbt:
+              enabled: false
+              key: "test"
+              value: "test"

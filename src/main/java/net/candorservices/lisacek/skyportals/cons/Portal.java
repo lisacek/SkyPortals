@@ -2,8 +2,11 @@ package net.candorservices.lisacek.skyportals.cons;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import net.candorservices.lisacek.skyportals.ConditionType;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;

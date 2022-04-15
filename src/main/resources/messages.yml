@@ -1,0 +1,7 @@
+portal-destroyed: "&cPortal destroyed!"
+portal-place: "&aPlaced portal!"
+portal-use-other: "&cYou can't manage other portals!"
+portal-removed-hologram: "&aRemoved hologram!"
+portal-no-hologram: "&cThere is no hologram!"
+portal-already-nearby: "&cThere is already a portal nearby!"
+portal-cannot-place: "&cYou can't place a portal here!"

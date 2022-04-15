@@ -7,13 +7,19 @@ import com.google.gson.JsonParser;
 import net.candorservices.lisacek.skyportals.SkyPortals;
 import net.candorservices.lisacek.skyportals.cons.PlacedBlock;
 import net.candorservices.lisacek.skyportals.cons.Portal;
+import net.candorservices.lisacek.skyportals.utils.Colors;
 import org.bukkit.*;
 import org.bukkit.block.Block;
+import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class PortalManager {
@@ -27,14 +33,12 @@ public class PortalManager {
     }
 
     public void savePortal(Location loc, File file, String name) {
-        List<Block> blocks = getBlocksAroundCenter(loc, 10);
+        List<Block> blocks = getBlocksAroundCenter(loc, 20);
         JsonObject blocksObject = new JsonObject();
         blocksObject.add("blocks", new JsonArray());
 
         for (Block block : blocks) {
-            Bukkit.getLogger().info("Block: " + block.getType());
-            if (block.getType() == Material.AIR) continue;
-            Bukkit.getLogger().info("Block: " + block.getType());
+            if (block.getType() == Material.AIR || block.getType() == Material.VOID_AIR) continue;
             JsonArray blocksArray = blocksObject.get("blocks").getAsJsonArray();
             JsonObject serializedBlock = new JsonObject();
             serializedBlock.addProperty("material", block.getType().name());
@@ -52,11 +56,22 @@ public class PortalManager {
         writeJson(blocksObject, file, name);
     }
 
-    public void placePortal(Location loc, String name, String site, boolean delete) {
+    public void placePortal(Location loc, Player player, String name, String site, boolean delete) {
         try {
             JsonObject blocksObject = loadBlocks(name, site);
 
-            Portal portal = new Portal(name, "yolo", loc, site);
+            Portal portal = new Portal(name, player.getName(), loc, site);
+
+            int adjust = SkyPortals.getInstance().getPortals().getInt("portals." + name + ".adjust");
+
+            Location hologramLocation = switch (site.toLowerCase()) {
+                case "west" -> portal.getLocation().clone().add(adjust, 0, 0);
+                case "east" -> portal.getLocation().clone().add((adjust - (adjust * 2)), 0, 0);
+                case "north" -> portal.getLocation().clone().add(0, 0, (adjust - (adjust * 2)));
+                default -> portal.getLocation().clone().add(0, 0, adjust);
+            };
+
+            SkyPortals.getInstance().getLocationCache().add(loc);
 
             JsonArray loadedBlocks = blocksObject.get("blocks").getAsJsonArray();
             AtomicInteger i = new AtomicInteger(0);
@@ -80,10 +95,40 @@ public class PortalManager {
                 }
             });
 
+            int highestY = 0;
+            for (PlacedBlock placedBlock : portal.getPlacedBlocks()) {
+                if (placedBlock.getLocation().getBlockY() < highestY) {
+                    highestY = placedBlock.getLocation().getBlockY();
+                }
+            }
+
+            AtomicBoolean isValid = new AtomicBoolean(true);
+
+            validateLoc(loc, portal, parts, highestY, isValid);
+            validateLoc(loc, portal, portalParts, highestY, isValid);
+
+            if (!delete && isValid.get()) {
+                ItemStack st = player.getInventory().getItemInMainHand().clone();
+                st.setAmount(st.getAmount() - 1);
+                player.getPlayer().getInventory().setItemInMainHand(st);
+            }
+            if (!delete && !isValid.get()) {
+                SkyPortals.getInstance().getLocationCache().remove(loc);
+                player.sendMessage(Colors.translateColors(SkyPortals.getInstance().getMessages().getString("portal-cannot-place")));
+                return;
+            }
+
             File f2 = SkyPortals.getInstance().getDataFolder();
             if (!delete) {
+                loc.add(0, Math.abs(highestY) + SkyPortals.getInstance().getPortals().getInt("portals." + portal.getName() + ".adjust"), 0);
                 placedPortals.add(portal);
             } else {
+                List<Entity> nearby = player.getNearbyEntities(5, 5, 5);
+                for (Entity entity : nearby) {
+                    if (entity instanceof ArmorStand) {
+                        entity.remove();
+                    }
+                }
                 placedPortals.removeIf(portal12 -> portal12 != null && portal12.getLocation().distance(loc) < 3);
             }
 
@@ -93,6 +138,20 @@ public class PortalManager {
                     if (i.get() + 1 >= max) {
                         portalParts.forEach(blockObject -> {
                             updateBlock(loc, blockObject, false);
+                        });
+                        hologramLocation.getWorld().spawn(hologramLocation, ArmorStand.class, armorStand -> {
+                            armorStand.setCustomName(Colors.translateColors(SkyPortals.getInstance().getPortals().getString("portals." + name + ".hologram.line1")));
+                            armorStand.setCustomNameVisible(true);
+                            armorStand.setGravity(false);
+                            armorStand.setVisible(false);
+                            armorStand.setInvulnerable(true);
+                        });
+                        hologramLocation.getWorld().spawn(hologramLocation.add(0, -0.3, 0), ArmorStand.class, armorStand -> {
+                            armorStand.setCustomName(Colors.translateColors(SkyPortals.getInstance().getPortals().getString("portals." + name + ".hologram.line2")));
+                            armorStand.setCustomNameVisible(true);
+                            armorStand.setGravity(false);
+                            armorStand.setVisible(false);
+                            armorStand.setInvulnerable(true);
                         });
                         task.cancel();
                     }
@@ -112,20 +171,49 @@ public class PortalManager {
             placedPortals.forEach(portal1 -> {
                 portalsArray.add(portal1.serializeToJson());
             });
+            SkyPortals.getInstance().getLocationCache().remove(loc);
             writeJsonArray(portalsArray, f2, "data.json");
-            Bukkit.getLogger().info(placedPortals.toString());
-            Bukkit.getLogger().info("Loaded blocks of: " + blocksObject.get("blocks").getAsJsonArray().size());
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void validateLoc(Location loc, Portal portal, List<JsonObject> portalParts, int highestY, AtomicBoolean isValid) {
+        int finalHighestY = highestY;
+        portalParts.forEach(json -> {
+            Location virtual = loc.clone().add(0, Math.abs(finalHighestY) + SkyPortals.getInstance().getPortals().getInt("portals." + portal.getName() + ".adjust"), 0);
+            JsonObject blockObject = json.getAsJsonObject();
+            JsonObject locationObject = blockObject.get("location").getAsJsonObject();
+            Block block = virtual.getBlock().getRelative(locationObject.get("x").getAsInt(), locationObject.get("y").getAsInt(), locationObject.get("z").getAsInt());
+            block.getChunk().setForceLoaded(true);
+            if (block.getType() != Material.AIR && block.getType() != Material.valueOf(blockObject.get("material").getAsString())) {
+                isValid.set(false);
+            }
+        });
+    }
+
+    public Portal getNearestPortal(Location loc, double distance) {
+        Portal nearest = null;
+        for (Portal portal : placedPortals) {
+            if (portal.getLocation().getWorld() != loc.getWorld()) continue;
+            int highestY = 0;
+            for (PlacedBlock placedBlock : portal.getPlacedBlocks()) {
+                if (placedBlock.getLocation().getBlockY() < highestY) {
+                    highestY = placedBlock.getLocation().getBlockY();
+                }
+            }
+            if (portal.getLocation().distance(loc) < distance) {
+                nearest = portal;
+                break;
+            }
+        }
+        return nearest;
     }
 
     private void deleteBlock(Location loc, JsonObject blockObject) {
         JsonObject locationObject = blockObject.get("location").getAsJsonObject();
         Block block = loc.getBlock().getRelative(locationObject.get("x").getAsInt(), locationObject.get("y").getAsInt(), locationObject.get("z").getAsInt());
         block.getChunk().setForceLoaded(true);
-        Bukkit.getLogger().info("Deleting block: " + block.getType().name());
-        Bukkit.getLogger().info("Location: " + block.getX() + " " + block.getY() + " " + block.getZ());
         if (block.getType().name().equals(blockObject.get("material").getAsString())) {
             block.setType(Material.AIR);
         }
@@ -162,6 +250,31 @@ public class PortalManager {
             OutputStreamWriter osw = new OutputStreamWriter(is);
             Writer w = new BufferedWriter(osw);
             w.write(placedPortals.toString());
+            w.close();
+        } catch (IOException e) {
+            Bukkit.getLogger().info("Could not write to file");
+            e.printStackTrace();
+        }
+    }
+
+
+    private void writeJson(String empty, File file, String name) {
+        if (!file.exists()) {
+            file.mkdirs();
+        }
+        File f = new File(file, name);
+        if (!f.exists()) {
+            try {
+                f.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        try {
+            FileOutputStream is = new FileOutputStream(f);
+            OutputStreamWriter osw = new OutputStreamWriter(is);
+            Writer w = new BufferedWriter(osw);
+            w.write(empty);
             w.close();
         } catch (IOException e) {
             Bukkit.getLogger().info("Could not write to file");
@@ -217,6 +330,15 @@ public class PortalManager {
     public void reloadPortals() {
         placedPortals.clear();
         File f = new File(SkyPortals.getInstance().getDataFolder() + "/data.json");
+        if (!f.exists()) {
+            try {
+                f.createNewFile();
+                writeJson("[]", f, "");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return;
+        }
         JsonArray jsonArray = getJsonArray(f);
         jsonArray.forEach(jsonElement -> {
             JsonObject jsonObject = jsonElement.getAsJsonObject();
